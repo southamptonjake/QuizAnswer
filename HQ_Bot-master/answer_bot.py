@@ -27,6 +27,9 @@ import sys
 import wx
 from halo import Halo
 import math
+from google.cloud import language
+from google.cloud.language import enums
+from google.cloud.language import types
 
 # for terminal colors 
 class bcolors:
@@ -58,9 +61,10 @@ def gui_interface():
 	return None
 
 def load_json():
-	global remove_words, sample_questions, negative_words
-	remove_words = json.loads(open("Data/settings.json",encoding="utf8").read())["remove_words"]
-	negative_words = json.loads(open("Data/settings.json",encoding="utf8").read())["negative_words"]
+	global remove_words, negative_words
+	remove_words = json.loads(open("Data/settings.json").read())["remove_words"]
+	negative_words = json.loads(open("Data/settings.json").read())["negative_words"]
+	
 # simplify question and remove which,what....etc //question is string
 def simplify_ques(question):
 	neg=False
@@ -76,8 +80,6 @@ def simplify_ques(question):
 			clean_question=clean_question+ch
 
 	return clean_question.lower(),neg
-
-
 # get web page
 def get_page(link):
 	try:
@@ -121,9 +123,23 @@ def smart_answer(content,qwords):
 		if content.count(el[0]+" "+el[1])!=0 :
 			points+=1000
 	return points
-
+	
+def entities_text(text):
+    """Detects entities in the text."""
+    client = language.LanguageServiceClient()		
+    # Instantiates a plain text document.
+    document = types.Document(content=text,type=enums.Document.Type.PLAIN_TEXT)
+    # Detects entities in the document
+    entities = client.analyze_entities(document).entities
+    # entity types from enums.Entity.Type
+    entity_type=('UNKNOWN', 'PERSON', 'LOCATION', 'ORGANIZATION','EVENT', 'WORK_OF_ART', 'CONSUMER_GOOD', 'OTHER')
+    name_salience = {}
+    for entity in entities:
+        name_salience[entity.name] = entity.salience
+    return name_salience
+	
 # use google to get wiki page
-def google_wiki(sim_ques, options, neg):
+def google_wiki(ques, options, neg, sal):
 	spinner = Halo(text='Googling and searching Wikipedia', spinner='dots2')
 	spinner.start()
 	num_pages = 1
@@ -131,13 +147,14 @@ def google_wiki(sim_ques, options, neg):
 	content = ""
 	maxo=""
 	maxp=-sys.maxsize
-	words = split_string(sim_ques)
+	words = split_string(ques)
 	for o in options:
 		
 		o = o.lower()
 		original=o
 		o += ' wiki'
 
+	
 		# get google search results for option + 'wiki'
 		search_wiki = google.search(o, num_pages)
 
@@ -149,7 +166,11 @@ def google_wiki(sim_ques, options, neg):
 		temp=0
 
 		for word in words:
-			temp = temp + page.count(word)
+			try:
+				sal[word]
+				temp = temp + page.count(word)
+			except:
+				temp = temp
 		temp+=smart_answer(page, words)
 		if neg:
 			temp*=-1
@@ -160,39 +181,56 @@ def google_wiki(sim_ques, options, neg):
 	spinner.succeed()
 	spinner.stop()
 	return points,maxo
+	
+# use google to get wiki page
+def google_wiki2(ques, options, neg):
+	spinner = Halo(text='Googling and searching Wikipedia', spinner='dots2')
+	spinner.start()
+	num_pages = 1
+	points = list()
+	content = ""
+	maxo=""
+	maxp=-sys.maxsize
+	print(ques)
+	search_wiki = google.search(ques + ' wiki', num_pages)
+	link = search_wiki[0].link
+	print(link)
+	content = get_page(link)
+	soup = BeautifulSoup(content,"lxml")
+	page = soup.get_text().lower()
+	
+	for o in options:
+		o = o.lower()
+		temp=0
+		temp = temp + ((page.count(o)) * 1000)
+		words = split_string(o)
+		for word in words:
+			temp = temp + (page.count(word))
+		if neg:
+			temp*=-1
+		points.append(temp)
+		if temp>maxp:
+			maxp=temp
+			maxo=o
+	spinner.succeed()
+	spinner.stop()
+	return points,maxo
 
-def get_points_question(number_of_bots,bot_or_user):
-	hq_question_json = json.loads(open("Data/question.json", encoding="utf8").read())
+def get_points_question(questionNumber):
+	hq_question_json = json.loads(open("Data/question" + str(questionNumber) + ".json", encoding="utf8").read())
 	hq_question = hq_question_json['question']
 	simq, neg = simplify_ques(hq_question)
 	options = []
 	for x in range(0, 3):
 		options.append(hq_question_json['answers'][x]['text'])
 	simq = simq.lower()
-	print(options)
-	print(simq)
-	print(neg)
 	maxo=""
-	points, maxo = google_wiki(simq, options,neg)
-	if bot_or_user == "user":
-		for x in range(0, 3):
-			if maxo == options[x].lower():
-				option=bcolors.OKGREEN+options[x]+bcolors.ENDC
-			print(options[x] + " { points: " + bcolors.BOLD + str(points[x]) + bcolors.ENDC + " }\n")
-	else:
-		total_points = 0
-		for x in range(0, 3):
-			total_points += points[x]
-		bots_per_answer = []
-		total_bots_allocated = 0
-		for x in range(0, 3):
-			bots_per_answer.append(math.floor(points[x] / total_points * number_of_bots))
-			total_bots_allocated += math.floor(points[x] / total_points * number_of_bots)
-		if total_bots_allocated < number_of_bots:
-			for x in range(0, 3):
-				if maxo == options[x].lower():
-					bots_per_answer[x] += number_of_bots - total_bots_allocated
-		return bots_per_answer
+	#points, maxo = google_wiki(simq, options,neg,entities_text(hq_question))
+	points, maxo = google_wiki2(hq_question, options,neg)
+	for x in range(0, 3):
+		if maxo == options[x].lower():
+			option=bcolors.OKGREEN+options[x]+bcolors.ENDC
+		print(options[x] + " { points: " + bcolors.BOLD + str(points[x]) + bcolors.ENDC + " }\n")
 
 def get_question_id():
 	hq_question_json = json.loads(open("Data/question.json", encoding="utf8").read())
@@ -204,7 +242,7 @@ if __name__ == "__main__":
 	lastq = ""
 	while(1):
 		if lastq !=  get_question_id():
-			bots_per_answer  = get_points_question(10,"user")			
+			bots_per_answer  = get_points_question(10,"bot")			
 			lastq = get_question_id()
 	
 
