@@ -1,12 +1,15 @@
 '''
+
 	TODO:
 	* Implement normalize func
 	* Attempt to google wiki \"...\" part of question
 	* Rid of common appearances in 3 options
 	* Automate screenshot process
 	* Implement Asynchio for concurrency
+
 	//Script is in working condition at all times
 	//TODO is for improving accuracy
+
 '''
 
 # answering bot for trivia HQ and Cash Show
@@ -62,7 +65,7 @@ def load_json():
 # take screenshot of question 
 def screen_grab(to_save):
 	# 31,228 485,620 co-ords of screenshot// left side of screen
-	im = Imagegrab.grab(bbox=(31,228,485,640))
+	im = Imagegrab.grab(bbox=(31,228,485,740))
 	im.save(to_save)
 
 # get OCR text //questions and options
@@ -188,8 +191,17 @@ def check_screen():
 def wait(msec):
 	return None
 
+# answer by combining two words
+def smart_answer(content,qwords):
+	zipped= zip(qwords,qwords[1:])
+	points=0
+	for el in zipped :
+		if content.count(el[0]+" "+el[1])!=0 :
+			points+=1000
+	return points
+
 # use google to get wiki page
-def google_wiki(ques, options, neg):
+def google_wiki(sim_ques, options, neg):
 	spinner = Halo(text='Googling and searching Wikipedia', spinner='dots2')
 	spinner.start()
 	num_pages = 1
@@ -197,30 +209,56 @@ def google_wiki(ques, options, neg):
 	content = ""
 	maxo=""
 	maxp=-sys.maxsize
-	print(ques)
-	search_wiki = google.search(ques + ' wiki', num_pages)
-	link = search_wiki[0].link
-	print(link)
-	content = get_page(link)
-	soup = BeautifulSoup(content,"lxml")
-	page = soup.get_text().lower()
-	
+	words = split_string(sim_ques)
 	for o in options:
+		
 		o = o.lower()
+		original=o
+		o += ' wiki'
+
+		# get google search results for option + 'wiki'
+		search_wiki = google.search(o, num_pages)
+
+		link = search_wiki[0].link
+		content = get_page(link)
+		soup = BeautifulSoup(content,"lxml")
+		page = soup.get_text().lower()
+
 		temp=0
-		temp = temp + ((page.count(o)) * 1000)
-		words = split_string(o)
+
 		for word in words:
-			temp = temp + (page.count(word))
+			temp = temp + page.count(word)
+		temp+=smart_answer(page, words)
 		if neg:
 			temp*=-1
 		points.append(temp)
 		if temp>maxp:
 			maxp=temp
-			maxo=o
+			maxo=original
 	spinner.succeed()
 	spinner.stop()
 	return points,maxo
+
+
+# return points for sample_questions
+def get_points_sample():
+	simq = ""
+	x = 0
+	for key in sample_questions:
+		x = x + 1
+		points = []
+		simq,neg = simplify_ques(key)
+		options = sample_questions[key]
+		simq = simq.lower()
+		maxo=""
+		points, maxo = google_wiki(simq, options,neg)
+		print("\n" + str(x) + ". " + bcolors.UNDERLINE + key + bcolors.ENDC + "\n")
+		for point, option in zip(points, options):
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point) + bcolors.ENDC + " }\n")
+
+
 # return points for live game // by screenshot
 def get_points_live():
 	neg= False
@@ -244,4 +282,9 @@ def get_points_live():
 if __name__ == "__main__":
 	load_json()
 	while(1):
-		get_points_live()
+		try:
+			get_points_live()
+		except IndexError:
+			print("failed")
+	
+
