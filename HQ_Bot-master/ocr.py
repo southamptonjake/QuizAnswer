@@ -199,12 +199,13 @@ def google_ques(ques, options, neg, question_search):
 	for o in options:
 		o = o.lower()
 		temp=0
-		temp = temp + ((page.count(o)) * 1000)
+		temp = temp + ((page.count(' ' + o + ' ')) * 1000)
 		words = split_string(o)
 		for word in words:
-			temp = temp + (page.count(word))
+			temp = temp + (page.count(' ' + word + ' '))
 		if neg:
 			temp*=-1
+		temp = temp / len(page)
 		points.append(temp)
 		if temp>maxp:
 			maxp=temp
@@ -234,10 +235,11 @@ def google_ans_wiki(ques, options, neg, option_search):
 		temp=0
 
 		for word in words:
-			temp = temp + page.count(word)
+			temp = temp + page.count(' ' + word + ' ')
 		temp+=smart_answer(page, words)
 		if neg:
 			temp*=-1
+		temp = temp / len(page)
 		points.append(temp)
 		if temp>maxp:
 			maxp=temp
