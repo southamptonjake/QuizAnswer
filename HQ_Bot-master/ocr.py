@@ -314,7 +314,8 @@ def get_points_live():
 				if maxo == option.lower():
 					option=bcolors.OKGREEN+option+bcolors.ENDC
 				print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		except IndexError:
+		except Exception as inst:
+			print(inst)
 			print("No Results Found")
 		print('\n')
 		try:
@@ -324,7 +325,8 @@ def get_points_live():
 				if maxo == option.lower():
 					option=bcolors.OKGREEN+option+bcolors.ENDC
 				print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		except IndexError:
+		except Exception as inst:
+			print(inst)
 			print("No Results Found")
 		print('\n')
 		try:
@@ -334,7 +336,8 @@ def get_points_live():
 				if maxo == option.lower():
 					option=bcolors.OKGREEN+option+bcolors.ENDC
 				print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		except IndexError:
+		except Exception as inst:
+			print(inst)
 			print("No Results Found")
 		print('\n')
 		try:
@@ -343,8 +346,9 @@ def get_points_live():
 			for point, option in zip(points, options):
 				if maxo == option.lower():
 					option=bcolors.OKGREEN+option+bcolors.ENDC
-				print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }\n")
-		except IndexError:
+				print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
+		except Exception as inst:
+			print(inst)
 			print("No Results Found")
 
 # menu// main func
