@@ -57,7 +57,7 @@ def load_json():
 	global remove_words, sample_questions, negative_words, driver
 	remove_words = json.loads(open("Data/settings.json").read())["remove_words"]
 	negative_words = json.loads(open("Data/settings.json").read())["negative_words"]
-	driver = webdriver.Firefox(executable_path=r'C:\Users\JakeL\Pictures\geckodriver-v0.20.1-win64\geckodriver.exe')
+	#driver = webdriver.Firefox(executable_path=r'C:\Users\JakeL\Pictures\geckodriver-v0.20.1-win64\geckodriver.exe')
 
 # take screenshot of question
 def screen_grab(to_save):
@@ -205,7 +205,10 @@ def google_ques(ques, options, neg, question_search):
 			temp = temp + (page.count(' ' + word + ' '))
 		if neg:
 			temp*=-1
-		temp = temp / len(page)
+		try:
+			temp = temp / len(page)
+		except Exception as inst:
+			print(o)
 		points.append(temp)
 		if temp>maxp:
 			maxp=temp
@@ -340,6 +343,7 @@ def get_points_live():
 			print(inst)
 			print("No Results Found")
 		print('\n')
+		'''
 		try:
 			print("Googling Question + Answer")
 			points,maxo = google_ques_ans(question.lower(), options, neg)
@@ -350,6 +354,7 @@ def get_points_live():
 		except Exception as inst:
 			print(inst)
 			print("No Results Found")
+		'''
 
 # menu// main func
 if __name__ == "__main__":

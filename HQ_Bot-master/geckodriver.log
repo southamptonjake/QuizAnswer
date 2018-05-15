@@ -1263,3 +1263,97 @@ Unable to read VR Path Registry from C:\Users\JakeL\AppData\Local\openvr\openvrp
 
 ###!!! [Child][MessageChannel::SendAndWait] Error: Channel error: cannot send/recv
 
+1526328228034	geckodriver	INFO	geckodriver 0.20.1
+1526328228043	geckodriver	INFO	Listening on 127.0.0.1:51203
+1526328231134	mozrunner::runner	INFO	Running command: "C:\\Program Files\\Mozilla Firefox\\firefox.exe" "-marionette" "-profile" "C:\\Users\\JakeL\\AppData\\Local\\Temp\\rust_mozprofile.FEqLeCGH8E0F"
+Unable to read VR Path Registry from C:\Users\JakeL\AppData\Local\openvr\openvrpaths.vrpath
+1526328232630	Marionette	INFO	Enabled via --marionette
+Unable to read VR Path Registry from C:\Users\JakeL\AppData\Local\openvr\openvrpaths.vrpath
+Unable to read VR Path Registry from C:\Users\JakeL\AppData\Local\openvr\openvrpaths.vrpath
+Unable to read VR Path Registry from C:\Users\JakeL\AppData\Local\openvr\openvrpaths.vrpath
+1526328234320	Marionette	INFO	Listening on port 51211
+Unable to read VR Path Registry from C:\Users\JakeL\AppData\Local\openvr\openvrpaths.vrpath
+1526328234752	Marionette	WARN	TLS certificate errors will be ignored for this session
+[Child 11640, Chrome_ChildThread] WARNING: pipe error: 109: file z:/build/build/src/ipc/chromium/src/chrome/common/ipc_channel_win.cc, line 346
+[Child 11640, Chrome[Parent 12772, Gecko_IOThread] WARNING: pipe error: 109: file z:/build/build/src/ipc/chromium/src/chrome/common/ipc_channel_win.cc, line 346
+
+###!!! [Parent][MessageChannel] Error: (msgtype=0x15008D,name=PBrowser::Msg_UpdateNativeWindowHandle) Closed channel: cannot send/recv
+
+
+###!!! [Parent][MessageChannel] Error: (msgtype=0x150080,name=PBrowser::Msg_Destroy) Closed channel: cannot send/recv
+
+
+###!!! [Child][MessageChannel] Error: (msgtype=0x150001,name=PBrowser::Msg_AsyncMessage) Closed channel: cannot send/recv
+
+JavaScript error: chrome://browser/content/tab-content.js, line 316: NS_ERROR_UNEXPECTED: Component returned failure code: 0x8000ffff (NS_ERROR_UNEXPECTED) [nsIMessageSender.sendAsyncMessage[Parent 12772, Gecko_IOThread] WARNING: pipe error: 109: file z:/build/build/src/ipc/chromium/src/chrome/common/ipc_channel_win.cc, line 346
+[Child 2824, Chrome_ChildThread] WARNING: pipe error: 109: file z:/build/build/src/ipc/chromium/src/chrome/common/ipc_channel_win.cc, line 346
+[Child 2824, Chrome_ChildThread] WARNING: pipe erro]
+[Child 9396, Chrome_ChildThrea
+###!!! [Parent][MessageChannel] Error: (msgtype=0x15008D,name=PBrowser::Msg_UpdateNativeWindowHandle) Closed channel: cannot send/recv
+
+
+###!!! [Parent][MessageChannel] Error: (msgtype=0x150080,name=PBrowser::Msg_Destroy) Closed channel: cannot send/recv
+
+
+###!!! [Child][MessageChannel] Error: (msgtype=0x150001,name=PBrowser::Msg_AsyncMessage) Closed channel: cannot send/recv
+
+JavaScript error: chrome://browser/content/tab-content.js, line 316: NS_ERROR_UNEXPECTED: Component returned failure code: 0x8000ffff (NS_ERROR_UNEXPECTED) [nsIMessageSender.sendAsyncMessage]
+
+###!!! [Child][MessageChannel] Error: (msgtype=0x150001,name=PBrowser::Msg_AsyncMessage) Closed channel: cannot send/recv
+
+JavaScript error: chrome://browser/content/content.js, line 700: NS_ERROR_UNEXPECTED: Component returned failure code: 0x8000ffff (NS_ERROR_UNEXPECTED) [nsIMessageSender.sendAsyncMessage]
+
+###!!! [Child][MessageChannel] Error: (msgtype=0x15002B,name=PBrowser::Msg_SetInputContext) Closed channel: cannot send/recv
+
+ 109: file z:/build/build/src/ipc/chromium/src/chrome/common/ipc_channel_win.cc, line 346
+[Child 14820, Chrome_Ch[Ch*** UTM:SVC TimerManager:registerTimer called after profile-before-change notification. Ignoring timer registration for id: telemetry_modules_ping
+[GPU 15124, Chr
+###!!! [Child][MessageChannel::SendAndWait] Error: Channel error: cannot send/recv
+
+1526328355449	geckodriver	INFO	geckodriver 0.20.1
+1526328355458	geckodriver	INFO	Listening on 127.0.0.1:51428
+1526328358487	mozrunner::runner	INFO	Running command: "C:\\Program Files\\Mozilla Firefox\\firefox.exe" "-marionette" "-profile" "C:\\Users\\JakeL\\AppData\\Local\\Temp\\rust_mozprofile.Tm3GRpDTnjnH"
+Unable to read VR Path Registry from C:\Users\JakeL\AppData\Local\openvr\openvrpaths.vrpath
+1526328359292	Marionette	INFO	Enabled via --marionette
+Unable to read VR Path Registry from C:\Users\JakeL\AppData\Local\openvr\openvrpaths.vrpath
+Unable to read VR Path Registry from C:\Users\JakeL\AppData\Local\openvr\openvrpaths.vrpath
+Unable to read VR Path Registry from C:\Users\JakeL\AppData\Local\openvr\openvrpaths.vrpath
+Unable to read VR Path Registry from C:\Users\JakeL\AppData\Local\openvr\openvrpaths.vrpath
+1526328360502	Marionette	INFO	Listening on port 51436
+1526328361604	Marionette	WARN	TLS certificate errors will be ignored for this session
+[Parent 14860, Gecko_IOThread] WARNING: pipe error: 109: file z:/build/build/src/ipc/chromium/src/chrome/common/ipc_channel_win.cc, line 346
+[Child 15368, Chrome_ChildThread] WARNING: pipe error: 109: file z:/build/build/src/ipc/chromium/src/chrome/common/ipc_channel_win.cc, line 346
+[Parent 14860, Gecko_IOThread] WARNING: pipe error: 109: file z:/build/build/src/ipc/chromium/src/chrome/common/ipc_channel_win.cc, line 346
+
+###!!! [Parent][MessageChannel] Error: (msgtype=0x15008D,name=PBrowser::Msg_UpdateNativeWindowHandle) Closed channel: cannot send/recv
+
+
+###!!! [Parent][MessageChannel] Error: (msgtype=0x150080,name=PBrowser::Msg_Destroy) Closed channel: cannot send/recv
+
+
+###!!! [Child][MessageChannel] Error: (msgtype=0x150001,name=PBrowser::Msg_AsyncMessage) Closed channel: cannot send/recv
+
+JavaScript error: chrome://browser/content/tab-content.js, line 316: NS_ERROR_UNEXPECTED: Component returned failure code: 0x8000ffff (NS_ERROR_UNEXPECTED) [nsIMessageSender.sendAsyncMessage]
+
+###!!! [Child][MessageChannel] Error: (msgtype=0x150001,name=PBrowser::Msg_AsyncMessage) Closed channel: cannot send/recv
+
+JavaScript error: chrome://browser/content/content.js, line 700: NS_ERROR_UNEXPECTED: Component returned failure code: 0
+###!!! [Parent][MessageChannel] Error: (msgtype=0x15008D,name=PBrowser::Msg_UpdateNativeWindowHandle) Closed channel: cannot send/recv
+
+
+###!!! [Parent][MessageChannel] Error: (msgtype=0x150080,name=PBrowser::Msg_Destroy) Closed channel: cannot send/recv
+
+[Child 2668, Chrome_ChildThread] WARNING: pipe error: 109: file z:/build/build/src/ipc/chromium/src/chrome/common/ipc_channel_win.cc, line 346
+
+###!!! [Child][MessageChannel] Error: (msgtype=0x150001,name=PBrowser::Msg_AsyncMessage) Closed channel: cannot send/recv
+
+JavaScript error: chrome://browser/content/tab-content.js, line 316: NS_ERROR_UNEXPECTED: Component returned failure code: 0x8000ffff (NS_ERROR_UNEXPECTED) [nsIMessageSender.sendAsyncMessage]
+
+###!!! [Child][MessageChannel] Error: (msgtype=0x150001,name=PBrowser::Msg_AsyncMessage) Closed channel: cannot send/recv
+
+JavaScript error: chrome://browser/content/content.js, line 700: NS_ERROR_UNEXPECTED: Component returned failure code: 0x8000ffff (NS_ERROR_UNEXPECTED) [nsIMessageSender.sendAsyncMessage]
+[Parent 16076, Gecko_IOThread] WARNING: pipe error: 109: file z:/build/build/src/ipc/chromium/src/chrome/common/ipc_channel_win.cc, line 346
+[Child 6068, Chrome_ChildThread] WARNING: pipe error: 109: file z:/build/build/src/ipc/chromium/src/chrome/common/ipc_channel_win.cc, line 346
+[Child 6068, Ch
+###!!! [Child][MessageChannel] Error: (msgtype=0x15002B,name=PBrowser::Msg_SetInputContext) Closed channel: cannot send/recv
+
