@@ -17,6 +17,7 @@ from halo import Halo
 from selenium import webdriver
 from multiprocessing.dummy import Pool as ThreadPool
 import itertools
+import datetime
 
 # for terminal colors
 class bcolors:
@@ -106,6 +107,7 @@ def normalise(points):
 		for x in range(0,3):
 			normal_points.append((points[x] / sum_points) * 10)
 		return normal_points
+	return points
 # get questions and options from OCR text
 def parse_question():
 	text = read_screen()
@@ -125,9 +127,17 @@ def parse_question():
 		if flag :
 			if line != '' :
 				options.append(line)
-
-	return question, options
-
+	return removeIV(question), options
+	
+def removeIV(question):
+	try:
+		if question[0] == " " and question[1] == "I" and question[2] == "v":
+			question = question[3:]
+		if question[0] == " ":
+			question = question[1:]
+		return question
+	except IndexError:
+		return question
 # simplify question and remove which,what....etc //question is string
 def get_neg(question):
 	neg=False
@@ -149,11 +159,16 @@ def simplify_ques(question):
 
 	return clean_question.lower()
 
-def smart_answer(content,qwords):
+def smart_answer(content,qwords,option):
+	option_printed = False
 	zipped= zip(qwords,qwords[1:])
 	points=0
 	for el in zipped :
 		if content.count(el[0]+" "+el[1])!=0 :
+			if option_printed == False:
+				print(option)
+				option_printed = True
+			print(el[0] + ' ' + el[1])
 			points+=1000
 	return points
 # get web page
@@ -195,25 +210,35 @@ def google_ques(ques, options, neg, question_search):
 	content = get_page(link)
 	soup = BeautifulSoup(content,"lxml")
 	page = soup.get_text().lower()
-
+	sig = False
 	for o in options:
-		o = o.lower()
-		temp=0
-		temp = temp + ((page.count(' ' + o + ' ')) * 1000)
-		words = split_string(o)
-		for word in words:
-			temp = temp + (page.count(' ' + word + ' '))
-		if neg:
-			temp*=-1
-		try:
+		try:	
+			o = o.lower()
+			temp=0
+			temp = temp + ((page.count(' ' + o + ' ')) * 1000)
+			temp = temp + ((page.count('"' + o + '"')) * 1000)
+			temp = temp + ((page.count(' ' + o + '"')) * 1000)
+			temp = temp + ((page.count('"' + o + ' ')) * 1000)
+			temp = temp + ((page.count('"' + o + '.')) * 1000)
+			temp = temp + ((page.count(' ' + o + '.')) * 1000)
+			temp = temp + (page.count(o))
+			
+			words = split_string(o)
+			for word in words:
+				temp = temp + (page.count(' ' + word + ' '))
+			if neg:
+				temp*=-1
+			if temp > 1000 or temp < -1000:
+				sig = True
 			temp = temp / len(page)
+		
 		except Exception as inst:
-			print(o)
+			temp = 0
 		points.append(temp)
 		if temp>maxp:
 			maxp=temp
 			maxo=o
-	return normalise(points),maxo
+	return normalise(points),maxo,sig
 
 def google_ans_wiki(ques, options, neg, option_search):
 	sim_ques = simplify_ques(ques)
@@ -223,31 +248,79 @@ def google_ans_wiki(ques, options, neg, option_search):
 	maxo=""
 	maxp=-sys.maxsize
 	words = split_string(sim_ques)
+	sig = False
 	for x in range(0,3) :
-		o = options[x]
-		o = o.lower()
-		original=o
-		# get google search results for option + 'wiki'
-		search_wiki = option_search[x]
+		try:	
+			o = options[x]
+			o = o.lower()
+			original=o
+			# get google search results for option + 'wiki'
+			search_wiki = option_search[x]
 
-		link = search_wiki[0].link
-		content = get_page(link)
-		soup = BeautifulSoup(content,"lxml")
-		page = soup.get_text().lower()
+			link = search_wiki[0].link
+			content = get_page(link)
+			soup = BeautifulSoup(content,"lxml")
+			page = soup.get_text().lower()
 
-		temp=0
+			temp=0
 
-		for word in words:
-			temp = temp + page.count(' ' + word + ' ')
-		temp+=smart_answer(page, words)
-		if neg:
-			temp*=-1
-		temp = temp / len(page)
+			for word in words:
+				temp = temp + page.count(' ' + word + ' ')
+			temp+=smart_answer(page, words, options[x])
+			if neg:
+				temp*=-1
+			if temp > 1000 or temp < -1000:
+				sig = True
+			temp = temp / len(page)
+		except Exception as inst:
+			temp = 0
 		points.append(temp)
 		if temp>maxp:
 			maxp=temp
 			maxo=original
-	return normalise(points),maxo
+	return normalise(points),maxo,sig
+	
+def google_quesans(ques, options, neg, option_search):
+	sim_ques = simplify_ques(ques)
+	num_pages = 1
+	points = list()
+	content = ""
+	maxo=""
+	maxp=-sys.maxsize
+	words = split_string(sim_ques)
+	sig = False
+	for x in range(0,3) :
+		try:	
+			o = options[x]
+			o = o.lower()
+			original=o
+			# get google search results for option + 'wiki'
+			search_wiki = option_search[x]
+
+			link = search_wiki[0].link
+			content = get_page(link)
+			soup = BeautifulSoup(content,"lxml")
+			page = soup.get_text().lower()
+
+			temp=0
+
+			for word in words:
+				temp = temp + page.count(' ' + word + ' ')
+			temp+=smart_answer(page, words, options[x])
+			temp+=page.count(' ' + options[x] + ' ') * 3000
+			if neg:
+				temp*=-1
+			if temp > 1000 or temp < -1000:
+				sig = True
+			temp = temp / len(page)
+		except Exception as inst:
+			temp = 0
+		points.append(temp)
+		if temp>maxp:
+			maxp=temp
+			maxo=original
+	return normalise(points),maxo,sig
+	
 def google_ques_ans(ques, options, neg):
 	num_pages = 1
 	points = list()
@@ -266,7 +339,8 @@ def google_ques_ans(ques, options, neg):
 		if temp>maxp:
 			maxp=temp
 			maxo=original
-	return normalise(points),maxo
+		
+	return normalise(points),maxo,sig
 
 def different_valid_ocr(question,options):
 	global last_options,last_question
@@ -301,7 +375,10 @@ def get_points_live():
 		   options[0] + 'wiki',
 		   options[1] + 'wiki',
 		   options[2] + 'wiki',
-		   question
+		   question,
+		   question + ' ' + options[0],
+		   question + ' ' + options[1],
+		   question + ' ' + options[2]
 		  ]
 		pool = ThreadPool(4)
 		# open the urls in their own threads
@@ -310,57 +387,127 @@ def get_points_live():
 		# close the pool and wait for the work to finish
 		pool.close()
 		pool.join()
-		try:
-			print("Searching " + str(results[0][0].link))
-			points,maxo = google_ques(question.lower(), options, neg, results[0])
-			for point, option in zip(points, options):
-				if maxo == option.lower():
-					option=bcolors.OKGREEN+option+bcolors.ENDC
-				print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		except Exception as inst:
-			print(inst)
-			print("No Results Found")
+		print("Searching " + str(results[0][0].link))
+		points,maxo,sig = google_ques(question.lower(), options, neg, results[0])
+		print(sig)
+		for point, option in zip(points, options):
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
-		try:
-			print("Searching " + str(results[4][0].link))
-			points,maxo = google_ques(question.lower(), options, neg, results[4])
-			for point, option in zip(points, options):
-				if maxo == option.lower():
-					option=bcolors.OKGREEN+option+bcolors.ENDC
-				print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		except Exception as inst:
-			print(inst)
-			print("No Results Found")
+		print("Searching " + str(results[4][0].link))
+		points,maxo,sig = google_ques(question.lower(), options, neg, results[4])
+		print(sig)
+		for point, option in zip(points, options):
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
-		try:
-			print("Googling Answer + wiki")
-			points,maxo = google_ans_wiki(question.lower(), options, neg, [results[1],results[2],results[3]])
-			for point, option in zip(points, options):
-				if maxo == option.lower():
-					option=bcolors.OKGREEN+option+bcolors.ENDC
-				print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		except Exception as inst:
-			print(inst)
-			print("No Results Found")
+		print("Googling Answer + wiki")
+		points,maxo,sig = google_ans_wiki(question.lower(), options, neg, [results[1],results[2],results[3]])
+		print(sig)
+		count = 1
+		for point, option in zip(points, options):
+			print("Searching " + str(results[count][0].link))
+			count += 1
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
-		'''
-		try:
-			print("Googling Question + Answer")
-			points,maxo = google_ques_ans(question.lower(), options, neg)
-			for point, option in zip(points, options):
-				if maxo == option.lower():
-					option=bcolors.OKGREEN+option+bcolors.ENDC
-				print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		except Exception as inst:
-			print(inst)
-			print("No Results Found")
-		'''
+		print("Googling Question + Answer")
+		count = 5
+		points,maxo,sig = google_quesans(question.lower(), options, neg, [results[5],results[6],results[7]])
+		print(sig)
+		for point, option in zip(points, options):
+			print("Searching " + str(results[count][0].link))
+			count += 1
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
+		print('\n')
 
 # menu// main func
 if __name__ == "__main__":
 	load_json()
 	while(1):
-		try:
-			get_points_live()
-		except IndexError:
-			print("failed")
+		get_points_live()
+		
+'''
+if __name__ == "__main__":
+	load_json()
+	neg= False
+	question = " Which of these musicals has had the most Broadway performances?"
+	question = removeIV(question)
+	options = ["The Lion King","The Phantom of the Opera","Cats"]
+	neg= False
+	if different_valid_ocr(question,options):
+		last_options = options
+		last_question = question
+		points = []
+		neg = get_neg(question)
+		maxo=""
+		m=1
+		if neg:
+			m=-1
+		print("\n" + bcolors.UNDERLINE + question + bcolors.ENDC + "\n")
+		#open up url in threads
+		time = datetime.datetime.now().time()
+		urls = [
+		   question + ' wiki',
+		   options[0] + 'wiki',
+		   options[1] + 'wiki',
+		   options[2] + 'wiki',
+		   question,
+		   question + ' ' + options[0],
+		   question + ' ' + options[1],
+		   question + ' ' + options[2]
+		  ]
+		pool = ThreadPool(4)
+		# open the urls in their own threads
+		# and return the results
+		results = pool.starmap(google.search, zip(urls,itertools.repeat(1)))
+		print(time)
+		time = datetime.datetime.now().time()
+		# close the pool and wait for the work to finish
+		pool.close()
+		pool.join()
+		print("Searching " + str(results[0][0].link))
+		points,maxo,sig = google_ques(question.lower(), options, neg, results[0])
+		print(sig)
+		for point, option in zip(points, options):
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
+		print('\n')
+		print("Searching " + str(results[4][0].link))
+		points,maxo,sig = google_ques(question.lower(), options, neg, results[4])
+		print(sig)
+		for point, option in zip(points, options):
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
+		print('\n')
+		print("Googling Answer + wiki")
+		points,maxo,sig = google_ans_wiki(question.lower(), options, neg, [results[1],results[2],results[3]])
+		print(sig)
+		count = 1
+		for point, option in zip(points, options):
+			print("Searching " + str(results[count][0].link))
+			count += 1
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
+		print('\n')
+		print("Googling Question + Answer")
+		count = 5
+		points,maxo,sig = google_quesans(question.lower(), options, neg, [results[5],results[6],results[7]])
+		print(sig)
+		for point, option in zip(points, options):
+			print("Searching " + str(results[count][0].link))
+			count += 1
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
+		print('\n')
+'''
+	
