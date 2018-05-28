@@ -12,12 +12,16 @@ import cv2
 import os
 import pyscreenshot as Imagegrab
 import sys
-import wx
 from halo import Halo
+from urllib.parse import urlencode
+import time
+import urllib.request
+from fake_useragent import UserAgent	
+
 from selenium import webdriver
 from multiprocessing.dummy import Pool as ThreadPool
 import itertools
-import datetime
+
 
 # for terminal colors
 class bcolors:
@@ -44,26 +48,16 @@ driver = ""
 last_question = ""
 last_options = [1,1,1]
 
-# GUI interface
-def gui_interface():
-	app = wx.App()
-	frame = wx.Frame(None, -1, 'win.py')
-	frame.SetDimensions(0,0,640,480)
-	frame.Show()
-	app.MainLoop()
-	return None
-
 # load sample questions
 def load_json():
 	global remove_words, sample_questions, negative_words, driver
 	remove_words = json.loads(open("Data/settings.json").read())["remove_words"]
 	negative_words = json.loads(open("Data/settings.json").read())["negative_words"]
-	#driver = webdriver.Firefox(executable_path=r'C:\Users\JakeL\Pictures\geckodriver-v0.20.1-win64\geckodriver.exe')
 
 # take screenshot of question
 def screen_grab(to_save):
 	# 31,228 485,620 co-ords of screenshot// left side of screen
-	im = Imagegrab.grab(bbox=(31,228,485,740))
+	im = Imagegrab.grab(bbox=(100,258,485,780))
 	im.save(to_save)
 
 # get OCR text //questions and options
@@ -206,7 +200,7 @@ def google_ques(ques, options, neg, question_search):
 	maxo=""
 	maxp=-sys.maxsize
 	search_wiki = question_search
-	link = search_wiki[0].link
+	link = search_wiki
 	content = get_page(link)
 	soup = BeautifulSoup(content,"lxml")
 	page = soup.get_text().lower()
@@ -257,7 +251,7 @@ def google_ans_wiki(ques, options, neg, option_search):
 			# get google search results for option + 'wiki'
 			search_wiki = option_search[x]
 
-			link = search_wiki[0].link
+			link = search_wiki
 			content = get_page(link)
 			soup = BeautifulSoup(content,"lxml")
 			page = soup.get_text().lower()
@@ -297,7 +291,7 @@ def google_quesans(ques, options, neg, option_search):
 			# get google search results for option + 'wiki'
 			search_wiki = option_search[x]
 
-			link = search_wiki[0].link
+			link = search_wiki
 			content = get_page(link)
 			soup = BeautifulSoup(content,"lxml")
 			page = soup.get_text().lower()
@@ -387,7 +381,7 @@ def get_points_live():
 		# close the pool and wait for the work to finish
 		pool.close()
 		pool.join()
-		print("Searching " + str(results[0][0].link))
+		print("Searching " + str(results[0]))
 		points,maxo,sig = google_ques(question.lower(), options, neg, results[0])
 		print(sig)
 		for point, option in zip(points, options):
@@ -395,7 +389,7 @@ def get_points_live():
 				option=bcolors.OKGREEN+option+bcolors.ENDC
 			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
-		print("Searching " + str(results[4][0].link))
+		print("Searching " + str(results[4]))
 		points,maxo,sig = google_ques(question.lower(), options, neg, results[4])
 		print(sig)
 		for point, option in zip(points, options):
@@ -408,7 +402,7 @@ def get_points_live():
 		print(sig)
 		count = 1
 		for point, option in zip(points, options):
-			print("Searching " + str(results[count][0].link))
+			print("Searching " + str(results[count]))
 			count += 1
 			if maxo == option.lower():
 				option=bcolors.OKGREEN+option+bcolors.ENDC
@@ -419,13 +413,73 @@ def get_points_live():
 		points,maxo,sig = google_quesans(question.lower(), options, neg, [results[5],results[6],results[7]])
 		print(sig)
 		for point, option in zip(points, options):
-			print("Searching " + str(results[count][0].link))
+			print("Searching " + str(results[count]))
 			count += 1
 			if maxo == option.lower():
 				option=bcolors.OKGREEN+option+bcolors.ENDC
 			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
 
+	
+def get_html(url):
+    ua = UserAgent()
+    header = ua.random
+    try:
+        request = urllib.request.Request(url)
+        request.add_header("User-Agent", header)
+        html = urllib.request.urlopen(request).read()
+        return html
+    except urllib.error.HTTPError as e:
+        print("Error accessing:", url)
+        print(e)
+    except Exception as e:
+        print(e)
+        print("Error accessing:", url)
+        return None	
+		
+def _get_search_url(query, page=0, per_page=10, lang='en', area='co.uk', ncr=False):
+    # note: num per page might not be supported by google anymore (because of
+    # google instant)
+
+    params = {'nl': lang, 'q': query.encode(
+        'utf8'), 'start': page * per_page, 'num': per_page }
+
+    params = urlencode(params)
+
+    https = int(time.time()) % 2 == 0
+    bare_url = u"https://www.google.co.uk/search?" if https else u"http://www.google.co.uk/search?"
+    url = bare_url + params
+    # return u"http://www.google.com/search?hl=%s&q=%s&start=%i&num=%i" %
+    # (lang, normalize_query(query), page * per_page, per_page)    
+    return url
+
+def search(query, pages=1, lang='en', area='com', ncr=False, void=True):
+    """Returns a list of GoogleResult.
+    Args:
+        query: String to search in google.
+        pages: Number of pages where results must be taken.
+        area : Area of google homepages.
+    TODO: add support to get the google results.
+    Returns:
+        A GoogleResult object."""
+    results = []
+    for i in range(pages):
+        url = _get_search_url(query, i, lang=lang, area=area, ncr=ncr)
+        html = get_html(url)
+        soup = BeautifulSoup(html, "html.parser")
+        div = soup.find("div", attrs={"class": "g"})
+        return _get_google_link(div)
+
+def _get_google_link(li):
+    """Return google link from a search."""
+    try:
+        a = li.find("a")
+        link = a["href"]
+        return link
+    except Exception:
+        return None
+
+'''
 # menu// main func
 if __name__ == "__main__":
 	load_json()
@@ -451,7 +505,7 @@ if __name__ == "__main__":
 			m=-1
 		print("\n" + bcolors.UNDERLINE + question + bcolors.ENDC + "\n")
 		#open up url in threads
-		time = datetime.datetime.now().time()
+
 		urls = [
 		   question + ' wiki',
 		   options[0] + 'wiki',
@@ -465,13 +519,12 @@ if __name__ == "__main__":
 		pool = ThreadPool(4)
 		# open the urls in their own threads
 		# and return the results
-		results = pool.starmap(google.search, zip(urls,itertools.repeat(1)))
+		results = pool.starmap(search, zip(urls,itertools.repeat(1)))
 		print(time)
-		time = datetime.datetime.now().time()
 		# close the pool and wait for the work to finish
 		pool.close()
 		pool.join()
-		print("Searching " + str(results[0][0].link))
+		print("Searching " + str(results[0]))
 		points,maxo,sig = google_ques(question.lower(), options, neg, results[0])
 		print(sig)
 		for point, option in zip(points, options):
@@ -479,7 +532,7 @@ if __name__ == "__main__":
 				option=bcolors.OKGREEN+option+bcolors.ENDC
 			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
-		print("Searching " + str(results[4][0].link))
+		print("Searching " + str(results[4]))
 		points,maxo,sig = google_ques(question.lower(), options, neg, results[4])
 		print(sig)
 		for point, option in zip(points, options):
@@ -492,7 +545,7 @@ if __name__ == "__main__":
 		print(sig)
 		count = 1
 		for point, option in zip(points, options):
-			print("Searching " + str(results[count][0].link))
+			print("Searching " + str(results[count]))
 			count += 1
 			if maxo == option.lower():
 				option=bcolors.OKGREEN+option+bcolors.ENDC
@@ -503,11 +556,10 @@ if __name__ == "__main__":
 		points,maxo,sig = google_quesans(question.lower(), options, neg, [results[5],results[6],results[7]])
 		print(sig)
 		for point, option in zip(points, options):
-			print("Searching " + str(results[count][0].link))
+			print("Searching " + str(results[count]))
 			count += 1
 			if maxo == option.lower():
 				option=bcolors.OKGREEN+option+bcolors.ENDC
 			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
-'''
 	
