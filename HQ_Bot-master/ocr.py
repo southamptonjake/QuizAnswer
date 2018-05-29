@@ -23,6 +23,7 @@ import re
 
 from selenium import webdriver
 from multiprocessing.dummy import Pool as ThreadPool
+from multiprocessing import Pool
 import itertools
 
 
@@ -51,6 +52,8 @@ driver = ""
 last_question = ""
 last_options = [1,1,1]
 
+cache_html = {}
+
 # load sample questions
 def load_json():
 	global remove_words, sample_questions, negative_words, driver
@@ -60,7 +63,7 @@ def load_json():
 # take screenshot of question
 def screen_grab(to_save):
 	# 31,228 485,620 co-ords of screenshot// left side of screen
-	im = Imagegrab.grab(bbox=(100,258,485,780))
+	im = Imagegrab.grab(bbox=(31,228,485,740)) 
 	im.save(to_save)
 
 # get OCR text //questions and options
@@ -163,9 +166,7 @@ def smart_answer(content,qwords,option):
 	for el in zipped :
 		if content.count(el[0]+" "+el[1])!=0 :
 			if option_printed == False:
-				print(option)
 				option_printed = True
-			print(el[0] + ' ' + el[1])
 			points+=1000
 	return points
 # get web page
@@ -173,8 +174,11 @@ def get_page(link):
 	try:
 		if link.find('mailto') != -1:
 			return ''
+		if link in cache_html:
+			return cache_html[link]
 		req = urllib2.Request(link, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'})
 		html = urllib2.urlopen(req).read()
+		cache_html[link] = html
 		return html
 	except (urllib2.URLError, urllib2.HTTPError, ValueError) as e:
 		return ''
@@ -220,8 +224,8 @@ def google_ques(ques, options, neg, question_search):
 			temp = temp + ((page.count(' ' + o + '.')) * 1000)
 			temp = temp + (page.count(o))
 
-			o = simplify_ques(o)
-			words = split_string(o)
+			so = simplify_ques(o)
+			words = split_string(so)
 			for word in words:
 				temp = temp + (page.count(' ' + word + ' '))
 			if neg:
@@ -236,6 +240,8 @@ def google_ques(ques, options, neg, question_search):
 		if temp>maxp:
 			maxp=temp
 			maxo=o
+	if points[0] == points[1] and points[0] == points[2] and points[1] == points[2]:
+		maxo = "nope"
 	return normalise(points),maxo,sig
 
 def google_ans_wiki(ques, options, neg, option_search):
@@ -276,6 +282,8 @@ def google_ans_wiki(ques, options, neg, option_search):
 		if temp>maxp:
 			maxp=temp
 			maxo=original
+	if points[0] == points[1] and points[0] == points[2] and points[1] == points[2]:
+		maxo = "nope"
 	return normalise(points),maxo,sig
 
 def google_quesans(ques, options, neg, option_search):
@@ -317,6 +325,8 @@ def google_quesans(ques, options, neg, option_search):
 		if temp>maxp:
 			maxp=temp
 			maxo=original
+	if points[0] == points[1] and points[0] == points[2] and points[1] == points[2]:
+		maxo = "nope"
 	return normalise(points),maxo,sig
 
 def google_ques_ans(ques, options, neg):
@@ -368,6 +378,7 @@ def get_points_live():
 			m=-1
 		print("\n" + bcolors.UNDERLINE + question + bcolors.ENDC + "\n")
 		#open up url in threads
+
 		urls = [
 		   question + ' wiki',
 		   options[0] + 'wiki',
@@ -381,48 +392,14 @@ def get_points_live():
 		pool = ThreadPool(4)
 		# open the urls in their own threads
 		# and return the results
-		results = pool.starmap(google.search, zip(urls,itertools.repeat(1)))
+		results = pool.starmap(search, zip(urls))
 		# close the pool and wait for the work to finish
 		pool.close()
 		pool.join()
-		print("Searching " + str(results[0]))
-		points,maxo,sig = google_ques(question.lower(), options, neg, results[0])
-		print(sig)
-		for point, option in zip(points, options):
-			if maxo == option.lower():
-				option=bcolors.OKGREEN+option+bcolors.ENDC
-			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		print('\n')
-		print("Searching " + str(results[4]))
-		points,maxo,sig = google_ques(question.lower(), options, neg, results[4])
-		print(sig)
-		for point, option in zip(points, options):
-			if maxo == option.lower():
-				option=bcolors.OKGREEN+option+bcolors.ENDC
-			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		print('\n')
-		print("Googling Answer + wiki")
-		points,maxo,sig = google_ans_wiki(question.lower(), options, neg, [results[1],results[2],results[3]])
-		print(sig)
-		count = 1
-		for point, option in zip(points, options):
-			print("Searching " + str(results[count]))
-			count += 1
-			if maxo == option.lower():
-				option=bcolors.OKGREEN+option+bcolors.ENDC
-			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		print('\n')
-		print("Googling Question + Answer")
-		count = 5
-		points,maxo,sig = google_quesans(question.lower(), options, neg, [results[5],results[6],results[7]])
-		print(sig)
-		for point, option in zip(points, options):
-			print("Searching " + str(results[count]))
-			count += 1
-			if maxo == option.lower():
-				option=bcolors.OKGREEN+option+bcolors.ENDC
-			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		print('\n')
+		printer(question,options,neg,results,0)
+		printer(question,options,neg,results,1)
+		printer(question,options,neg,results,2)
+		printer(question,options,neg,results,3)
 
 
 def get_html(url):
@@ -515,6 +492,52 @@ def _get_link(li):
 	a = li.find("a")
 	link = a["href"]
 	return _filter_link(link)
+
+
+def printer(question, options, neg, results, solverID):
+	if solverID == 0:
+		print("Searching " + str(results[0]))
+		points,maxo,sig = google_ques(question.lower(), options, neg, results[0])
+		print(sig)
+		for point, option in zip(points, options):
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
+		print('\n')
+	elif solverID == 1:
+		print("Searching " + str(results[4]))
+		points,maxo,sig = google_ques(question.lower(), options, neg, results[4])
+		print(sig)
+		for point, option in zip(points, options):
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
+		print('\n')
+	elif solverID == 2:
+		print("Googling Answer + wiki")
+		points,maxo,sig = google_ans_wiki(question.lower(), options, neg, [results[1],results[2],results[3]])
+		print(sig)
+		count = 1
+		for point, option in zip(points, options):
+			print("Searching " + str(results[count]))
+			count += 1
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
+		print('\n')
+	elif solverID == 3:
+		print("Googling Question + Answer")
+		count = 5
+		points,maxo,sig = google_quesans(question.lower(), options, neg, [results[5],results[6],results[7]])
+		print(sig)
+		for point, option in zip(points, options):
+			print("Searching " + str(results[count]))
+			count += 1
+			if maxo == option.lower():
+				option=bcolors.OKGREEN+option+bcolors.ENDC
+			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
+		print('\n')
+
 '''
 # menu// main func
 if __name__ == "__main__":
@@ -555,51 +578,11 @@ if __name__ == "__main__":
 		pool = ThreadPool(4)
 		# open the urls in their own threads
 		# and return the results
-		print(time.localtime())
 		results = pool.starmap(search, zip(urls))
-		print(time.localtime())
 		# close the pool and wait for the work to finish
 		pool.close()
 		pool.join()
-		print("Searching " + str(results[0]))
-		points,maxo,sig = google_ques(question.lower(), options, neg, results[0])
-		print(sig)
-		for point, option in zip(points, options):
-			if maxo == option.lower():
-				option=bcolors.OKGREEN+option+bcolors.ENDC
-			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		print('\n')
-		print(time.localtime())	
-		print("Searching " + str(results[4]))
-		points,maxo,sig = google_ques(question.lower(), options, neg, results[4])
-		print(sig)
-		for point, option in zip(points, options):
-			if maxo == option.lower():
-				option=bcolors.OKGREEN+option+bcolors.ENDC
-			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		print('\n')
-		print(time.localtime())
-		print("Googling Answer + wiki")
-		points,maxo,sig = google_ans_wiki(question.lower(), options, neg, [results[1],results[2],results[3]])
-		print(sig)
-		count = 1
-		for point, option in zip(points, options):
-			print("Searching " + str(results[count]))
-			count += 1
-			if maxo == option.lower():
-				option=bcolors.OKGREEN+option+bcolors.ENDC
-			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		print('\n')
-		print(time.localtime())
-		print("Googling Question + Answer")
-		count = 5
-		points,maxo,sig = google_quesans(question.lower(), options, neg, [results[5],results[6],results[7]])
-		print(sig)
-		for point, option in zip(points, options):
-			print("Searching " + str(results[count]))
-			count += 1
-			if maxo == option.lower():
-				option=bcolors.OKGREEN+option+bcolors.ENDC
-			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
-		print('\n')
-		print(time.localtime())
+		printer(question,options,neg,results,0)
+		printer(question,options,neg,results,1)
+		printer(question,options,neg,results,2)
+		printer(question,options,neg,results,3)
