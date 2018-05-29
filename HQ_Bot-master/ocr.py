@@ -13,10 +13,13 @@ import os
 import pyscreenshot as Imagegrab
 import sys
 from halo import Halo
-from urllib.parse import urlencode
+import urllib.parse
+from urllib.parse import unquote, parse_qs, urlparse, urlencode
 import time
 import urllib.request
-from fake_useragent import UserAgent	
+import requests
+from fake_useragent import UserAgent
+import re
 
 from selenium import webdriver
 from multiprocessing.dummy import Pool as ThreadPool
@@ -122,7 +125,7 @@ def parse_question():
 			if line != '' :
 				options.append(line)
 	return removeIV(question), options
-	
+
 def removeIV(question):
 	try:
 		if question[0] == " " and question[1] == "I" and question[2] == "v":
@@ -206,7 +209,7 @@ def google_ques(ques, options, neg, question_search):
 	page = soup.get_text().lower()
 	sig = False
 	for o in options:
-		try:	
+		try:
 			o = o.lower()
 			temp=0
 			temp = temp + ((page.count(' ' + o + ' ')) * 1000)
@@ -216,7 +219,8 @@ def google_ques(ques, options, neg, question_search):
 			temp = temp + ((page.count('"' + o + '.')) * 1000)
 			temp = temp + ((page.count(' ' + o + '.')) * 1000)
 			temp = temp + (page.count(o))
-			
+
+			o = simplify_ques(o)
 			words = split_string(o)
 			for word in words:
 				temp = temp + (page.count(' ' + word + ' '))
@@ -225,7 +229,7 @@ def google_ques(ques, options, neg, question_search):
 			if temp > 1000 or temp < -1000:
 				sig = True
 			temp = temp / len(page)
-		
+
 		except Exception as inst:
 			temp = 0
 		points.append(temp)
@@ -244,7 +248,7 @@ def google_ans_wiki(ques, options, neg, option_search):
 	words = split_string(sim_ques)
 	sig = False
 	for x in range(0,3) :
-		try:	
+		try:
 			o = options[x]
 			o = o.lower()
 			original=o
@@ -273,7 +277,7 @@ def google_ans_wiki(ques, options, neg, option_search):
 			maxp=temp
 			maxo=original
 	return normalise(points),maxo,sig
-	
+
 def google_quesans(ques, options, neg, option_search):
 	sim_ques = simplify_ques(ques)
 	num_pages = 1
@@ -284,7 +288,7 @@ def google_quesans(ques, options, neg, option_search):
 	words = split_string(sim_ques)
 	sig = False
 	for x in range(0,3) :
-		try:	
+		try:
 			o = options[x]
 			o = o.lower()
 			original=o
@@ -314,7 +318,7 @@ def google_quesans(ques, options, neg, option_search):
 			maxp=temp
 			maxo=original
 	return normalise(points),maxo,sig
-	
+
 def google_ques_ans(ques, options, neg):
 	num_pages = 1
 	points = list()
@@ -333,7 +337,7 @@ def google_ques_ans(ques, options, neg):
 		if temp>maxp:
 			maxp=temp
 			maxo=original
-		
+
 	return normalise(points),maxo,sig
 
 def different_valid_ocr(question,options):
@@ -420,79 +424,111 @@ def get_points_live():
 			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
 
-	
+
 def get_html(url):
-    ua = UserAgent()
-    header = ua.random
-    try:
-        request = urllib.request.Request(url)
-        request.add_header("User-Agent", header)
-        html = urllib.request.urlopen(request).read()
-        return html
-    except urllib.error.HTTPError as e:
-        print("Error accessing:", url)
-        print(e)
-    except Exception as e:
-        print(e)
-        print("Error accessing:", url)
-        return None	
-		
-def _get_search_url(query, page=0, per_page=10, lang='en', area='co.uk', ncr=False):
-    # note: num per page might not be supported by google anymore (because of
-    # google instant)
+	ua = UserAgent()
+	header = ua.random
+	try:
+		return requests.get(url).text
+	except urllib.error.HTTPError as e:
+		print("Error accessing:", url)
+		print(e)
+	except Exception as e:
+		print(e)
+		print("Error accessing:", url)
+		return None
 
-    params = {'nl': lang, 'q': query.encode(
-        'utf8'), 'start': page * per_page, 'num': per_page }
+def _get_search_url(query):
+	# note: num per page might not be supported by google anymore (because of
+	# google instant)
 
-    params = urlencode(params)
+	params = {'nl': 'en', 'q': query.encode(
+		'utf8')}
 
-    https = int(time.time()) % 2 == 0
-    bare_url = u"https://www.google.co.uk/search?" if https else u"http://www.google.co.uk/search?"
-    url = bare_url + params
-    # return u"http://www.google.com/search?hl=%s&q=%s&start=%i&num=%i" %
-    # (lang, normalize_query(query), page * per_page, per_page)    
-    return url
+	params = urlencode(params)
 
-def search(query, pages=1, lang='en', area='com', ncr=False, void=True):
-    """Returns a list of GoogleResult.
-    Args:
-        query: String to search in google.
-        pages: Number of pages where results must be taken.
-        area : Area of google homepages.
-    TODO: add support to get the google results.
-    Returns:
-        A GoogleResult object."""
-    results = []
-    for i in range(pages):
-        url = _get_search_url(query, i, lang=lang, area=area, ncr=ncr)
-        html = get_html(url)
-        soup = BeautifulSoup(html, "html.parser")
-        div = soup.find("div", attrs={"class": "g"})
-        return _get_google_link(div)
+	https = int(time.time()) % 2 == 0
+	bare_url = u"https://www.google.co.uk/search?" if https else u"http://www.google.co.uk/search?"
+	url = bare_url + params
+	# return u"http://www.google.com/search?hl=%s&q=%s&start=%i&num=%i" %
+	# (lang, normalize_query(query), page * per_page, per_page)
+	return url
 
-def _get_google_link(li):
-    """Return google link from a search."""
-    try:
-        a = li.find("a")
-        link = a["href"]
-        return link
-    except Exception:
-        return None
+def search(query):
+	url = _get_search_url(query)
+	html = get_html(url)
+	soup = BeautifulSoup(html, "html.parser")
+	divs = soup.findAll("div", attrs={"class": "g"})
+	for li in divs:
+		result = _get_link(li)
+		if result != None:
+			return result
 
+def _filter_link(link):
+	'''Filter links found in the Google result pages HTML code.
+	Returns None if the link doesn't yield a valid result.
+	'''
+	try:
+		# Valid results are absolute URLs not pointing to a Google domain
+		# like images.google.com or googleusercontent.com
+		o = urlparse(link, 'http')
+		# link type-1
+		# >>> "https://www.gitbook.com/book/ljalphabeta/python-"
+		if o.netloc and 'google' not in o.netloc:
+			return link
+		# link type-2
+		# >>> "http://www.google.com/url?url=http://python.jobbole.com/84108/&rct=j&frm=1&q=&esrc=s&sa=U&ved=0ahUKEwj3quDH-Y7UAhWG6oMKHdQ-BQMQFggUMAA&usg=AFQjCNHPws5Buru5Z71wooRLHT6mpvnZlA"
+		if o.netloc and o.path.startswith('/url'):
+			try:
+				link = parse_qs(o.query)['url'][0]
+				o = urlparse(link, 'http')
+				if o.netloc and 'google' not in o.netloc:
+					return link
+			except KeyError:
+				pass
+		# Decode hidden URLs.
+		if link.startswith('/url?'):
+			try:
+				# link type-3
+				# >>> "/url?q=http://python.jobbole.com/84108/&sa=U&ved=0ahUKEwjFw6Txg4_UAhVI5IMKHfqVAykQFggUMAA&usg=AFQjCNFOTLpmpfqctpIn0sAfaj5U5gAU9A"
+				link = parse_qs(o.query)['q'][0]
+				# Valid results are absolute URLs not pointing to a Google domain
+				# like images.google.com or googleusercontent.com
+				o = urlparse(link, 'http')
+				if o.netloc and 'google' not in o.netloc:
+					return link
+			except KeyError:
+				# link type-4
+				# >>> "/url?url=https://machine-learning-python.kspax.io/&rct=j&frm=1&q=&esrc=s&sa=U&ved=0ahUKEwj3quDH-Y7UAhWG6oMKHdQ-BQMQFggfMAI&usg=AFQjCNEfkUI0RP_RlwD3eI22rSfqbYM_nA"
+				link = parse_qs(o.query)['url'][0]
+				o = urlparse(link, 'http')
+				if o.netloc and 'google' not in o.netloc:
+					return link
+
+	# Otherwise, or on error, return None.
+	except Exception:
+		pass
+	return None
+
+def _get_link(li):
+	"""Return external link from a search."""
+	a = li.find("a")
+	link = a["href"]
+	return _filter_link(link)
 '''
 # menu// main func
 if __name__ == "__main__":
 	load_json()
 	while(1):
 		get_points_live()
-		
+
 '''
 if __name__ == "__main__":
 	load_json()
 	neg= False
-	question = " Which of these musicals has had the most Broadway performances?"
+	question = "Which 80s song begins, 'Bass, how low can you go?'"
 	question = removeIV(question)
-	options = ["The Lion King","The Phantom of the Opera","Cats"]
+	options = ["My Adidas","Push it","Bring the Noise"]
 	neg= False
 	if different_valid_ocr(question,options):
 		last_options = options
@@ -519,8 +555,9 @@ if __name__ == "__main__":
 		pool = ThreadPool(4)
 		# open the urls in their own threads
 		# and return the results
-		results = pool.starmap(search, zip(urls,itertools.repeat(1)))
-		print(time)
+		print(time.localtime())
+		results = pool.starmap(search, zip(urls))
+		print(time.localtime())
 		# close the pool and wait for the work to finish
 		pool.close()
 		pool.join()
@@ -532,6 +569,7 @@ if __name__ == "__main__":
 				option=bcolors.OKGREEN+option+bcolors.ENDC
 			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
+		print(time.localtime())	
 		print("Searching " + str(results[4]))
 		points,maxo,sig = google_ques(question.lower(), options, neg, results[4])
 		print(sig)
@@ -540,6 +578,7 @@ if __name__ == "__main__":
 				option=bcolors.OKGREEN+option+bcolors.ENDC
 			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
+		print(time.localtime())
 		print("Googling Answer + wiki")
 		points,maxo,sig = google_ans_wiki(question.lower(), options, neg, [results[1],results[2],results[3]])
 		print(sig)
@@ -551,6 +590,7 @@ if __name__ == "__main__":
 				option=bcolors.OKGREEN+option+bcolors.ENDC
 			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
+		print(time.localtime())
 		print("Googling Question + Answer")
 		count = 5
 		points,maxo,sig = google_quesans(question.lower(), options, neg, [results[5],results[6],results[7]])
@@ -562,4 +602,4 @@ if __name__ == "__main__":
 				option=bcolors.OKGREEN+option+bcolors.ENDC
 			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
-	
+		print(time.localtime())
