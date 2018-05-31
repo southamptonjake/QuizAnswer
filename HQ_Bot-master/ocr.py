@@ -23,7 +23,6 @@ import re
 
 from selenium import webdriver
 from multiprocessing.dummy import Pool as ThreadPool
-from multiprocessing import Pool
 import itertools
 
 
@@ -206,9 +205,9 @@ def google_ques(ques, options, neg, question_search):
 	content = ""
 	maxo=""
 	maxp=-sys.maxsize
-	search_wiki = question_search
+	search_wiki = question_search[0]
 	link = search_wiki
-	content = get_page(link)
+	content = question_search[1]
 	soup = BeautifulSoup(content,"lxml")
 	page = soup.get_text().lower()
 	sig = False
@@ -259,18 +258,16 @@ def google_ans_wiki(ques, options, neg, option_search):
 			o = o.lower()
 			original=o
 			# get google search results for option + 'wiki'
-			search_wiki = option_search[x]
-
-			link = search_wiki
-			content = get_page(link)
+			content = option_search[x]
 			soup = BeautifulSoup(content,"lxml")
 			page = soup.get_text().lower()
 
 			temp=0
 
-			for word in words:
-				temp = temp + page.count(' ' + word + ' ')
+			
 			temp+=smart_answer(page, words, options[x])
+			for word in words:
+				temp = temp + page.count(word)
 			if neg:
 				temp*=-1
 			if temp > 1000 or temp < -1000:
@@ -301,10 +298,8 @@ def google_quesans(ques, options, neg, option_search):
 			o = o.lower()
 			original=o
 			# get google search results for option + 'wiki'
-			search_wiki = option_search[x]
 
-			link = search_wiki
-			content = get_page(link)
+			content = option_search[x]
 			soup = BeautifulSoup(content,"lxml")
 			page = soup.get_text().lower()
 
@@ -313,7 +308,7 @@ def google_quesans(ques, options, neg, option_search):
 			for word in words:
 				temp = temp + page.count(' ' + word + ' ')
 			temp+=smart_answer(page, words, options[x])
-			temp+=page.count(' ' + options[x] + ' ') * 3000
+			temp+=page.count(' ' + options[x] + ' ') * 3
 			if neg:
 				temp*=-1
 			if temp > 1000 or temp < -1000:
@@ -439,8 +434,13 @@ def search(query):
 	for li in divs:
 		result = _get_link(li)
 		if result != None:
-			return result
+			return result,get_page(result)
 
+def link_good(o):
+	if o.netloc and 'google' not in o.netloc and 'youtube' not in o.netloc and 'ppt' not in o.path and 'pdf' not in o.path:
+			return True
+	return False
+	
 def _filter_link(link):
 	'''Filter links found in the Google result pages HTML code.
 	Returns None if the link doesn't yield a valid result.
@@ -451,7 +451,7 @@ def _filter_link(link):
 		o = urlparse(link, 'http')
 		# link type-1
 		# >>> "https://www.gitbook.com/book/ljalphabeta/python-"
-		if o.netloc and 'google' not in o.netloc:
+		if link_good(o):
 			return link
 		# link type-2
 		# >>> "http://www.google.com/url?url=http://python.jobbole.com/84108/&rct=j&frm=1&q=&esrc=s&sa=U&ved=0ahUKEwj3quDH-Y7UAhWG6oMKHdQ-BQMQFggUMAA&usg=AFQjCNHPws5Buru5Z71wooRLHT6mpvnZlA"
@@ -459,7 +459,7 @@ def _filter_link(link):
 			try:
 				link = parse_qs(o.query)['url'][0]
 				o = urlparse(link, 'http')
-				if o.netloc and 'google' not in o.netloc:
+				if link_good(o):
 					return link
 			except KeyError:
 				pass
@@ -472,14 +472,14 @@ def _filter_link(link):
 				# Valid results are absolute URLs not pointing to a Google domain
 				# like images.google.com or googleusercontent.com
 				o = urlparse(link, 'http')
-				if o.netloc and 'google' not in o.netloc:
+				if link_good(o):
 					return link
 			except KeyError:
 				# link type-4
 				# >>> "/url?url=https://machine-learning-python.kspax.io/&rct=j&frm=1&q=&esrc=s&sa=U&ved=0ahUKEwj3quDH-Y7UAhWG6oMKHdQ-BQMQFggfMAI&usg=AFQjCNEfkUI0RP_RlwD3eI22rSfqbYM_nA"
 				link = parse_qs(o.query)['url'][0]
 				o = urlparse(link, 'http')
-				if o.netloc and 'google' not in o.netloc:
+				if link_good(o):
 					return link
 
 	# Otherwise, or on error, return None.
@@ -495,8 +495,11 @@ def _get_link(li):
 
 
 def printer(question, options, neg, results, solverID):
+	m = 1
+	if neg:
+		m=-1
 	if solverID == 0:
-		print("Searching " + str(results[0]))
+		print("Searching " + str(results[0][0]))
 		points,maxo,sig = google_ques(question.lower(), options, neg, results[0])
 		print(sig)
 		for point, option in zip(points, options):
@@ -505,7 +508,7 @@ def printer(question, options, neg, results, solverID):
 			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
 	elif solverID == 1:
-		print("Searching " + str(results[4]))
+		print("Searching " + str(results[4][0]))
 		points,maxo,sig = google_ques(question.lower(), options, neg, results[4])
 		print(sig)
 		for point, option in zip(points, options):
@@ -515,11 +518,11 @@ def printer(question, options, neg, results, solverID):
 		print('\n')
 	elif solverID == 2:
 		print("Googling Answer + wiki")
-		points,maxo,sig = google_ans_wiki(question.lower(), options, neg, [results[1],results[2],results[3]])
+		points,maxo,sig = google_ans_wiki(question.lower(), options, neg, [results[1][1],results[2][1],results[3][1]])
 		print(sig)
 		count = 1
 		for point, option in zip(points, options):
-			print("Searching " + str(results[count]))
+			print("Searching " + str(results[count][0]))
 			count += 1
 			if maxo == option.lower():
 				option=bcolors.OKGREEN+option+bcolors.ENDC
@@ -528,10 +531,10 @@ def printer(question, options, neg, results, solverID):
 	elif solverID == 3:
 		print("Googling Question + Answer")
 		count = 5
-		points,maxo,sig = google_quesans(question.lower(), options, neg, [results[5],results[6],results[7]])
+		points,maxo,sig = google_quesans(question.lower(), options, neg, [results[5][1],results[6][1],results[7][1]])
 		print(sig)
 		for point, option in zip(points, options):
-			print("Searching " + str(results[count]))
+			print("Searching " + str(results[count][0]))
 			count += 1
 			if maxo == option.lower():
 				option=bcolors.OKGREEN+option+bcolors.ENDC
@@ -546,6 +549,7 @@ if __name__ == "__main__":
 		get_points_live()
 
 '''
+
 if __name__ == "__main__":
 	load_json()
 	neg= False
@@ -575,7 +579,7 @@ if __name__ == "__main__":
 		   question + ' ' + options[1],
 		   question + ' ' + options[2]
 		  ]
-		pool = ThreadPool(4)
+		pool = ThreadPool(8)
 		# open the urls in their own threads
 		# and return the results
 		results = pool.starmap(search, zip(urls))
