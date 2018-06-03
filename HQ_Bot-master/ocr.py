@@ -130,10 +130,12 @@ def parse_question():
 
 def removeIV(question):
 	try:
-		if question[0] == " " and question[1] == "I" and question[2] == "v":
-			question = question[3:]
-		if question[0] == " ":
+		while question[0] == " ":
 			question = question[1:]
+		if question[0] == "I" and question[1] == "v":
+			question = question[2:]
+		if question[0] == "™" and question[1] == "/" and question[2] == "™" :
+			question = question[3:]
 		return question
 	except IndexError:
 		return question
@@ -427,14 +429,17 @@ def _get_search_url(query):
 	return url
 
 def search(query):
-	url = _get_search_url(query)
-	html = get_html(url)
-	soup = BeautifulSoup(html, "html.parser")
-	divs = soup.findAll("div", attrs={"class": "g"})
-	for li in divs:
-		result = _get_link(li)
-		if result != None:
-			return result,get_page(result)
+	try:
+		url = _get_search_url(query)
+		html = get_html(url)
+		soup = BeautifulSoup(html, "html.parser")
+		divs = soup.findAll("div", attrs={"class": "g"})
+		for li in divs:
+			result = _get_link(li)
+			if result != None:
+				return result,get_page(result)
+	except Exception: 
+		return 'FAIL','FAIL'
 
 def link_good(o):
 	if o.netloc and 'google' not in o.netloc and 'youtube' not in o.netloc and 'ppt' not in o.path and 'pdf' not in o.path:
@@ -541,7 +546,7 @@ def printer(question, options, neg, results, solverID):
 			print(option + " { points: " + bcolors.BOLD + str(point*m) + bcolors.ENDC + " }")
 		print('\n')
 
-'''
+
 # menu// main func
 if __name__ == "__main__":
 	load_json()
@@ -590,3 +595,4 @@ if __name__ == "__main__":
 		printer(question,options,neg,results,1)
 		printer(question,options,neg,results,2)
 		printer(question,options,neg,results,3)
+'''
